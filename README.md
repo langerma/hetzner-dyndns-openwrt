@@ -24,7 +24,7 @@ A shell script for automatic dynamic DNS updates using the **Hetzner Cloud API**
 
 1. Download the script:
 ```bash
-wget https://raw.githubusercontent.com/langerma/hetzner-dyndns/main/dyndns.sh
+wget https://raw.githubusercontent.com/langerma/hetzner-dyndns-openwrt/main/dyndns.sh
 chmod +x dyndns.sh
 ```
 
