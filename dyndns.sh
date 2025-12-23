@@ -248,11 +248,10 @@ else
     logger Info "DNS record \"${full_record_name}\" is no longer valid - updating record"
 
     # Update the record using the API record name
-    update_response=$(curl -s -w "\n%{http_code}" -X "PUT" "${api_base_url}/zones/${zone_id}/rrsets/${api_record_name}/${record_type}" \
+    update_response=$(curl -s -w "\n%{http_code}" -X "POST" "${api_base_url}/zones/${zone_id}/rrsets/${api_record_name}/${record_type}/actions/set_records" \
          -H 'Content-Type: application/json' \
          -H "Authorization: Bearer ${auth_api_token}" \
          -d '{
-           "ttl": '${record_ttl}',
            "records": [
              {
                "value": "'${cur_pub_addr}'"
@@ -263,7 +262,7 @@ else
     http_code=$(echo "${update_response}" | tail -n 1)
     response_body=$(echo "${update_response}" | sed '$d')
 
-    if [[ "${http_code}" = "200" ]]; then
+    if [[ "${http_code}" = "201" ]]; then
       logger Info "DNS record \"${full_record_name}\" updated successfully"
     else
       logger Error "Failed to update record. HTTP Status: ${http_code}"
