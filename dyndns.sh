@@ -137,17 +137,25 @@ if [[ "${record_name}" = "" ]]; then
   exit 1
 fi
 
-# For Hetzner Cloud API, we need to use just the subdomain (record_name)
-# The API automatically handles the zone association
-# Special case: "@" or empty means the zone apex (root domain)
+# For Hetzner Cloud API, RRSet names are relative to the zone (not FQDNs).
+# Special case: "@" means the zone apex (root domain) - the API uses the
+# literal "@" for it, NOT the full zone name.
 if [[ "${record_name}" = "@" ]]; then
-  api_record_name="${zone_name}"
+  api_record_name="@"
 elif [[ "${record_name}" == *".${zone_name}" ]]; then
   # record_name already includes the zone, strip it to get just the subdomain
   api_record_name="${record_name%.${zone_name}}"
 else
   # Use record_name as-is (just the subdomain part)
   api_record_name="${record_name}"
+fi
+
+# URL-encoded form of the record name for use in query strings and URL paths
+# ("@" must be encoded as "%40").
+if [[ "${api_record_name}" = "@" ]]; then
+  api_record_name_url="%40"
+else
+  api_record_name_url="${api_record_name}"
 fi
 
 # For display and logging, construct the FQDN
@@ -186,7 +194,7 @@ fi
 
 # Get existing RRsets for this zone (using just the subdomain name)
 rrsets_info=$(curl -s --location \
-               --request GET "${api_base_url}/zones/${zone_id}/rrsets?name=${api_record_name}&type=${record_type}" \
+               --request GET "${api_base_url}/zones/${zone_id}/rrsets?name=${api_record_name_url}&type=${record_type}" \
                --header "Authorization: Bearer ${auth_api_token}")
 
 # Check for API errors
@@ -247,7 +255,10 @@ else
   else
     logger Info "DNS record \"${full_record_name}\" is no longer valid - updating record"
 
-    # Update the record using the API record name
+    # Update the record using the API record name.
+    # NOTE: the name goes in the URL *path* literally (e.g. "@" for the apex),
+    # NOT percent-encoded. Hetzner decodes "%40" in query strings but matches
+    # path segments verbatim, so "%40" here yields a 404 "RRSet(s) not found".
     update_response=$(curl -s -w "\n%{http_code}" -X "POST" "${api_base_url}/zones/${zone_id}/rrsets/${api_record_name}/${record_type}/actions/set_records" \
          -H 'Content-Type: application/json' \
          -H "Authorization: Bearer ${auth_api_token}" \
